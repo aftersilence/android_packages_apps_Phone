@@ -189,6 +189,15 @@
                     style="@style/InCallButton"
                     android:src="@drawable/ic_merge_holo_dark"
                     android:contentDescription="@string/onscreenMergeCallsText" />
+                    
+                <!-- "Blacklist" -->
+                <!-- The button used for toggling blackist. -->
+                <ImageButton android:id="@+id/addBlacklistButton"
+                    style="@style/InCallButton"
+                    android:src="@drawable/ic_block_contact_holo_dark"
+                    android:contentDescription="@string/onscreenBlacklistText"
+                    />
+
             </LinearLayout>
 
             <!-- This spacer is not used in GSM, so it has 0 width and height. The CDMA
