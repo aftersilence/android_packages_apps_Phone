@@ -289,7 +289,7 @@ public class InCallScreen extends Activity
 
     private BluetoothHandsfree mBluetoothHandsfree;
     private BluetoothHeadset mBluetoothHeadset;
-    private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothAdapter mAdapter;
     private boolean mBluetoothConnectionPending;
     private long mBluetoothConnectionRequestTime;
 
@@ -581,8 +581,8 @@ public class InCallScreen extends Activity
             // The PhoneApp only creates a BluetoothHandsfree instance in the
             // first place if BluetoothAdapter.getDefaultAdapter()
             // succeeds.  So at this point we know the device is BT-capable.
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            mBluetoothAdapter.getProfileProxy(getApplicationContext(), mBluetoothProfileServiceListener,
+            mAdapter = BluetoothAdapter.getDefaultAdapter();
+            mAdapter.getProfileProxy(getApplicationContext(), mBluetoothProfileServiceListener,
                                     BluetoothProfile.HEADSET);
         }
 
@@ -1043,7 +1043,7 @@ public class InCallScreen extends Activity
         // are moving out of the foreground.
 
         if (mBluetoothHeadset != null) {
-            mBluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mBluetoothHeadset);
+            mAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mBluetoothHeadset);
             mBluetoothHeadset = null;
         }
 
@@ -4344,7 +4344,7 @@ public class InCallScreen extends Activity
             return true;
         }
 
-        // If we issued a connectAudio() call "recently enough", even
+        // If we issued a userWantsAudioOn() call "recently enough", even
         // if BT isn't actually connected yet, let's still pretend BT is
         // on.  This makes the onscreen indication more responsive.
         if (mBluetoothConnectionPending) {
@@ -4397,8 +4397,6 @@ public class InCallScreen extends Activity
                     log("= BluetoothHeadset.getCurrentDevice: " + device);
                     log("= BluetoothHeadset.State: "
                         + mBluetoothHeadset.getConnectionState(device));
-                    log("= BluetoothHeadset audio connected: " +
-                        mBluetoothHeadset.isAudioConnected(device));
                 }
             } else {
                 log("= mBluetoothHeadset is null");

@@ -170,8 +170,8 @@ public class PhoneGlobals extends ContextWrapper
     CallNotifier notifier;
     NotificationMgr notificationMgr;
     Ringer ringer;
-    BluetoothHandsfree mBtHandsfree;
     Blacklist blackList;
+    BluetoothHandsfree mBtHandsfree;
     PhoneInterfaceManager phoneMgr;
     CallManager mCM;
     int mBluetoothHeadsetState = BluetoothProfile.STATE_DISCONNECTED;
@@ -348,14 +348,16 @@ public class PhoneGlobals extends ContextWrapper
 
                     phoneState = mCM.getState();
                     // Do not change speaker state if phone is not off hook
-                    if (phoneState == PhoneConstants.State.OFFHOOK && !isBluetoothHeadsetAudioOn()) {
-                        if (!isHeadsetPlugged()) {
-                            // if the state is "not connected", restore the speaker state.
-                            PhoneUtils.restoreSpeakerMode(getApplicationContext());
-                        } else {
-                            // if the state is "connected", force the speaker off without
-                            // storing the state.
-                            PhoneUtils.turnOnSpeaker(getApplicationContext(), false, false);
+                    if (phoneState == PhoneConstants.State.OFFHOOK) {
+                        if (mBtHandsfree == null || !mBtHandsfree.isAudioOn()) {
+                            if (!isHeadsetPlugged()) {
+                                // if the state is "not connected", restore the speaker state.
+                                PhoneUtils.restoreSpeakerMode(getApplicationContext());
+                            } else {
+                                // if the state is "connected", force the speaker off without
+                                // storing the state.
+                                PhoneUtils.turnOnSpeaker(getApplicationContext(), false, false);
+                            }
                         }
                     }
                     // Update the Proximity sensor based on headset state
@@ -402,7 +404,8 @@ public class PhoneGlobals extends ContextWrapper
 
                     phoneState = mCM.getState();
                     if (phoneState == PhoneConstants.State.OFFHOOK &&
-                        !isHeadsetPlugged() && !isBluetoothHeadsetAudioOn()) {
+                            !isHeadsetPlugged() &&
+                            !(mBtHandsfree != null && mBtHandsfree.isAudioOn())) {
                         PhoneUtils.turnOnSpeaker(getApplicationContext(), inDockMode, true);
                         updateInCallScreen();  // Has no effect if the InCallScreen isn't visible
                     }
@@ -481,15 +484,10 @@ public class PhoneGlobals extends ContextWrapper
             }
 
             if (BluetoothAdapter.getDefaultAdapter() != null) {
-                // Start BluetoothPhoneService even if device is not voice capable.
+                // Start BluetoothHandsree even if device is not voice capable.
                 // The device can still support VOIP.
-                /*startService(new Intent(this, BluetoothPhoneService.class));
-                bindService(new Intent(this, BluetoothPhoneService.class),
-                            mBluetoothPhoneConnection, 0);
-		 TODO */
-		    mBtHandsfree = BluetoothHandsfree.init(this, mCM);
-		    startService(new Intent(this, BluetoothHeadsetService.class));
-
+                mBtHandsfree = BluetoothHandsfree.init(this, mCM);
+                startService(new Intent(this, BluetoothHeadsetService.class));
             } else {
                 // Device is not bluetooth capable
                 mBtHandsfree = null;
@@ -549,7 +547,7 @@ public class PhoneGlobals extends ContextWrapper
             // asynchronous events from the telephony layer (like
             // launching the incoming-call UI when an incoming call comes
             // in.)
-            notifier = CallNotifier.init(this, phone, ringer, new CallLogAsync());
+            notifier = CallNotifier.init(this, phone, ringer, mBtHandsfree, new CallLogAsync());
 
             // register for ICC status
             IccCard sim = phone.getIccCard();
@@ -697,14 +695,6 @@ public class PhoneGlobals extends ContextWrapper
 
     BluetoothHandsfree getBluetoothHandsfree() {
         return mBtHandsfree;
-    }
-
-    /*IBluetoothHeadsetPhone getBluetoothPhoneService() {
-        return mBluetoothPhone;
-    }*/
-
-    boolean isBluetoothHeadsetAudioOn() {
-        return (mBluetoothHeadsetAudioState != BluetoothHeadset.STATE_AUDIO_DISCONNECTED);
     }
 
     /**
@@ -1159,12 +1149,13 @@ public class PhoneGlobals extends ContextWrapper
         if (proximitySensorModeEnabled()) {
             synchronized (mProximityWakeLock) {
                 // turn proximity sensor off and turn screen on immediately if
-                // we are using a headset, the keyboard is open, or the device
+                // we are using a headset and is not configured to keep sensor on
+                // the keyboard is open, or the device
                 // is being held in a horizontal position.
-                boolean screenOnImmediately = (isHeadsetPlugged()
-                                               || PhoneUtils.isSpeakerOn(this)
-                                               || isBluetoothHeadsetAudioOn()
-                                               || mIsHardKeyboardOpen);
+                boolean screenOnImmediately = ((!keepOn && isHeadsetPlugged())
+                            || PhoneUtils.isSpeakerOn(this)
+                            || (!keepOn && (mBtHandsfree != null) && mBtHandsfree.isAudioOn())
+                            || mIsHardKeyboardOpen);
 
                 // We do not keep the screen off when the user is outside in-call screen and we are
                 // horizontal, but we do not force it on when we become horizontal until the
@@ -1337,17 +1328,9 @@ public class PhoneGlobals extends ContextWrapper
 
         ringer.updateRingerContextAfterRadioTechnologyChange(this.phone);
         notifier.updateCallNotifierRegistrationsAfterRadioTechnologyChange();
-        /*if (mBluetoothPhone != null) {
-            try {
-                mBluetoothPhone.updateBtHandsfreeAfterRadioTechnologyChange();
-            } catch (RemoteException e) {
-                Log.e(LOG_TAG, Log.getStackTraceString(new Throwable()));
-            }
-        }*/
         if (mBtHandsfree != null) {
             mBtHandsfree.updateBtHandsfreeAfterRadioTechnologyChange();
         }
-
         if (mInCallScreen != null) {
             mInCallScreen.updateAfterRadioTechnologyChange();
         }
@@ -1870,21 +1853,4 @@ public class PhoneGlobals extends ContextWrapper
             return PhoneGlobals.createCallLogIntent();
         }
     }
-
-    /** Service connection */
-
-    //private final ServiceConnection mBluetoothPhoneConnection = new ServiceConnection() {
-
-        /** Handle the task of binding the local object to the service */
-      /*  public void onServiceConnected(ComponentName className, IBinder service) {
-            Log.i(LOG_TAG, "Headset phone created, binding local service.");
-            mBluetoothPhone = IBluetoothHeadsetPhone.Stub.asInterface(service);
-        }*/
-
-        /** Handle the task of cleaning up the local binding */
-       /* public void onServiceDisconnected(ComponentName className) {
-            Log.i(LOG_TAG, "Headset phone disconnected, cleaning local binding.");
-            mBluetoothPhone = null;
-        }
-    };*/
 }
