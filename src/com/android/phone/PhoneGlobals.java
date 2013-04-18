@@ -1152,6 +1152,7 @@ public class PhoneGlobals extends ContextWrapper
                 // we are using a headset and is not configured to keep sensor on
                 // the keyboard is open, or the device
                 // is being held in a horizontal position.
+                boolean keepOn = PhoneUtils.PhoneSettings.keepProximitySensorOn(this);
                 boolean screenOnImmediately = ((!keepOn && isHeadsetPlugged())
                             || PhoneUtils.isSpeakerOn(this)
                             || (!keepOn && (mBtHandsfree != null) && mBtHandsfree.isAudioOn())
