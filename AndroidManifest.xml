@@ -446,7 +446,6 @@
             </intent-filter>
         </activity>
 
-<
         <!-- "Blacklist settings" UI, used only on voice-capable phone devices. -->
         <activity android:name="BlacklistSetting"
                 android:exported="false"
