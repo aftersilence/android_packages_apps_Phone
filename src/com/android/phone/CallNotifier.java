@@ -210,10 +210,10 @@ public class CallNotifier extends Handler
      * This is only done once, at startup, from PhoneApp.onCreate().
      */
     /* package */ static CallNotifier init(PhoneGlobals app, Phone phone, Ringer ringer,
-                                           BluetoothHandsfree btMgr, CallLogAsync callLog) {
+                                           BluetoothHandsfree btMgr, CallLogger callLogger) {
         synchronized (CallNotifier.class) {
             if (sInstance == null) {
-                sInstance = new CallNotifier(app, phone, ringer, btMgr, callLog);
+                sInstance = new CallNotifier(app, phone, ringer, btMgr, callLogger);
             } else {
                 Log.wtf(LOG_TAG, "init() called multiple times!  sInstance = " + sInstance);
             }
@@ -223,7 +223,7 @@ public class CallNotifier extends Handler
 
     /** Private constructor; @see init() */
     private CallNotifier(PhoneGlobals app, Phone phone, Ringer ringer,
-                         BluetoothHandsfree btMgr, CallLogAsync callLog) {
+                         BluetoothHandsfree btMgr, CallLogger callLogger) {
         mApplication = app;
         mCM = app.mCM;
         mCallLogger = callLogger;

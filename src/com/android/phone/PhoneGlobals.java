@@ -550,7 +550,7 @@ public class PhoneGlobals extends ContextWrapper
             // asynchronous events from the telephony layer (like
             // launching the incoming-call UI when an incoming call comes
             // in.)
-            notifier = CallNotifier.init(this, phone, ringer, mBtHandsfree, new CallLogAsync());
+            notifier = CallNotifier.init(this, phone, ringer, mBtHandsfree, callLogger);
 
             // register for ICC status
             IccCard sim = phone.getIccCard();
@@ -1163,6 +1163,7 @@ public class PhoneGlobals extends ContextWrapper
                 // turn proximity sensor off and turn screen on immediately if
                 // we are using a headset, the keyboard is open, or the device
                 // is being held in a horizontal position.
+                boolean keepOn = PhoneUtils.PhoneSettings.keepProximitySensorOn(this);
                 boolean screenOnImmediately = ((!keepOn && isHeadsetPlugged())
                             || PhoneUtils.isSpeakerOn(this)
                             || (!keepOn && (mBtHandsfree != null) && mBtHandsfree.isAudioOn())

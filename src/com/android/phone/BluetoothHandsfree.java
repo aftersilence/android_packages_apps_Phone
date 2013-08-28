@@ -127,8 +127,8 @@ public class BluetoothHandsfree {
 
     private final BluetoothPhoneState mBluetoothPhoneState;  // for CIND and CIEV updates
     private final BluetoothAtPhonebook mPhonebook;
-    private PhoneConstants.State mPhoneState = PhoneConstants.State.IDLE;
-
+    private final BluetoothSMSAccess mSMSAccess;
+    private PhoneConstants.State mLastPhoneState = PhoneConstants.State.IDLE;
     CdmaPhoneCallState.PhoneCallState mCdmaThreeWayCallState =
                                             CdmaPhoneCallState.PhoneCallState.IDLE;
 
@@ -193,7 +193,7 @@ public class BluetoothHandsfree {
 
     /**
      * Initialize the singleton BluetoothHandsfree instance.
-     * This is only done once, at startup, from PhoneApp.onCreate().
+     * This is only done once, at startup, from PhoneGlobals.onCreate().
      */
     /* package */ static BluetoothHandsfree init(Context context, CallManager cm) {
         synchronized (BluetoothHandsfree.class) {
@@ -253,6 +253,7 @@ public class BluetoothHandsfree {
         mVirtualCallStarted = false;
         mVoiceRecognitionStarted = false;
         mPhonebook = new BluetoothAtPhonebook(mContext, this);
+        mSMSAccess = new BluetoothSMSAccess(mContext, this);
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         cdmaSetSecondCallState(false);
 
@@ -614,6 +615,7 @@ public class BluetoothHandsfree {
         }
         mRemoteBrsf = 0;
         mPhonebook.resetAtState();
+        mSMSAccess.resetAtState();
     }
 
     /* package */ HeadsetBase getHeadset() {
@@ -1024,10 +1026,10 @@ public class BluetoothHandsfree {
             // even if the {@link PhoneConstants.state} is same as before.
             // Check for the same.
 
-            PhoneConstants.State newState = mCM.getState();
-            if (newState != mPhoneState) {
-                mPhoneState = newState;
-                switch (mPhoneState) {
+            PhoneConstants.State state = mCM.getState();
+            if (state != mLastPhoneState) {
+                mLastPhoneState = state;
+                switch (mLastPhoneState) {
                 case IDLE:
                     mUserWantsAudio = true;  // out of call - reset state
                     audioOff();
@@ -1036,6 +1038,9 @@ public class BluetoothHandsfree {
                     callStarted();
                 }
             }
+
+            /* phone not setup yet */
+            if (foregroundCall == null) return;
 
             switch(foregroundCall.getState()) {
             case ACTIVE:
@@ -1642,10 +1647,22 @@ public class BluetoothHandsfree {
         mBluetoothPhoneState.ignoreRing();
     }
 
-    private void sendURC(String urc) {
+    /* package */ void sendURC(String urc) {
         if (isHeadsetConnected()) {
             mHeadset.sendURC(urc);
         }
+    }
+
+    /**
+     * Allows a mechanism to override the default line by line input handling with a custom handler
+     * @param stringToSend - initial string of characters to send out
+     * @param inputHandler - callback for handling the specialized input
+     */
+    void setSpecialPDUInputHandler(String stringToSend, HeadsetBase.SpecialPDUInputHandler inputHandler) {
+        if ((null != inputHandler) && (null != stringToSend) && (0 < stringToSend.length())) {
+            mHeadset.sendURCChars(stringToSend);
+        }
+        mHeadset.specialPDUInputHandler = inputHandler;
     }
 
     /** helper to redial last dialled number */
@@ -2696,6 +2713,7 @@ public class BluetoothHandsfree {
         });
 
         mPhonebook.register(parser);
+        mSMSAccess.register(parser);
     }
 
     public void sendScoGainUpdate(int gain) {
